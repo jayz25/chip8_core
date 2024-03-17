@@ -488,4 +488,19 @@ impl Emulator {
             self.sound_timer -= 1;
         }
     }
+
+    pub fn get_display(&self) -> &[bool] {
+        &self.screen
+    }
+
+    //  idx needs to be under 16 or else program will panic. For now we're gonna handle this in frontend
+    pub fn keypress(&mut self, idx: usize, pressed: bool) {
+        self.keys[idx] = pressed;
+    }
+
+    pub fn load(&mut self, data: &[u8]) {
+        let start = START_ADDRESS as usize;
+        let end = (START_ADDRESS as usize) + data.len();
+        self.ram[start..end].copy_from_slice(data);
+    }
 }
