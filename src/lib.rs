@@ -1,4 +1,4 @@
-use rand::random;
+use rand::Rng;
 
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
@@ -114,14 +114,14 @@ impl Emulator {
             // Clear Screen
             (0, 0, 0xE, 0) => {
                 self.screen = [false; SCREEN_WIDTH * SCREEN_HEIGHT];
-            }
+            },
 
             // Return from subroutine
             // Pops the subroutine instruction from CPU Stack and returns the program counter to the instruction which it had before invoking subroutine
             (0, 0, 0xE, 0xE) => {
                 let return_address = self.pop();
                 self.pc = return_address;
-            }
+            },
 
             // Jump NNN
             (1, _, _, _) => {
@@ -130,7 +130,7 @@ impl Emulator {
                 // 1324 = 1111 0011 0010 0100 AND 0000 1111 1111 1111
                 let jump_address = op & 0x0FFF;
                 self.pc = jump_address;
-            }
+            },
 
             // Call subroutine
             // Basically calling a function as opposite to return from subroutine (00EE)
@@ -139,7 +139,7 @@ impl Emulator {
                 let subroutine_address = op & 0x0FFF;
                 self.push(self.pc);
                 self.pc = subroutine_address;
-            }
+            },
 
             // This opcode allows us to skip the line similar to if-else block
             // If true go to one instruction if false go somewhere else
@@ -153,7 +153,7 @@ impl Emulator {
                 if self.v_reg[x] == nn {
                     self.pc += 2
                 }
-            }
+            },
 
             // Skip next if VX !- NN
             // Works similar to above with opposite condition
@@ -163,58 +163,58 @@ impl Emulator {
                 if self.v_reg[x] != nn {
                     self.pc += 2;
                 }
-            }
+            },
 
             // 5XY0, if VX == VY Skip next (Here least significant bit is ignored/not used hence 0)
-            (5, _, _, 0) => {
+            (5, _, _, _) => {
                 let x = digit2 as usize;
                 let y = digit3 as usize;
                 if self.v_reg[x] == self.v_reg[y] {
                     self.pc += 2;
                 }
-            }
+            },
 
             // 6XNN, set the value of VX to NN i.e VX = NN
             (6, _, _, _) => {
                 let x = digit2 as usize;
                 let nn = (op & 0x00FF) as u8;
                 self.v_reg[x] = nn;
-            }
+            },
 
             // 7XNN, add the value NN into the register VX i.e VX += NN
             (7, _, _, _) => {
                 let x = digit2 as usize;
                 let nn = (op & 0x00FF) as u8;
                 self.v_reg[x] = self.v_reg[x].wrapping_add(nn);
-            }
+            },
 
             // 8XY0, Set the value of VX equals to value of VY i.e VX = VY (LSB is not used)
             (8, _, _, 0) => {
                 let x = digit2 as usize;
                 let y = digit3 as usize;
                 self.v_reg[x] = self.v_reg[y];
-            }
+            },
 
             // 8XY1, Bitwise OR operation. Set the value of VX to VX | VY
             (8, _, _, 1) => {
                 let x = digit2 as usize;
                 let y = digit3 as usize;
                 self.v_reg[x] |= self.v_reg[y];
-            }
+            },
 
             //8XY2, Bitwise AND operation. Set the value of VX to VX & VY
             (8, _, _, 2) => {
                 let x = digit2 as usize;
                 let y = digit3 as usize;
                 self.v_reg[x] &= self.v_reg[y];
-            }
+            },
 
             //8XY3, Bitwise XOR operation. Set the value of VX to VX ^ VY
             (8, _, _, 3) => {
                 let x = digit2 as usize;
                 let y = digit3 as usize;
                 self.v_reg[x] ^= self.v_reg[y];
-            }
+            },
 
             //8XY4, Set the value of VX to VX + VY with considering the overflow/carryover
             // Now if there is a carry/overflow SET Flag Register VF to 1, if there's not carry/overflow SET Flag Register VF to 0
@@ -227,7 +227,7 @@ impl Emulator {
                 let new_vf = if carry { 1 } else { 0 };
                 self.v_reg[x] = new_vx;
                 self.v_reg[0xF] = new_vf;
-            }
+            },
 
             //8XY5, Set the value of VX to VX - VY
             (8, _, _, 5) => {
@@ -239,7 +239,7 @@ impl Emulator {
 
                 self.v_reg[x] = new_vx;
                 self.v_reg[0xF] = new_vf;
-            }
+            },
 
             //8XY6, Perform single right shift on the value in VX with the bit that was dropped off while shifting stored into VF register
             (8, _, _, 6) => {
@@ -247,7 +247,7 @@ impl Emulator {
                 let least_significant_bit = self.v_reg[x] & 1;
                 self.v_reg[x] >>= 1;
                 self.v_reg[0xF] = least_significant_bit;
-            }
+            },
 
             // 8XY7, Set the value of VX to VY - VX
             (8, _, _, 7) => {
@@ -259,7 +259,7 @@ impl Emulator {
 
                 self.v_reg[x] = new_vx;
                 self.v_reg[0xF] = new_vf;
-            }
+            },
 
             // 8XYE, Perform singlel left shift on the value in VX with the bit that was overflowed while shifting stored into VF register
             (8, _, _, 0xE) => {
@@ -267,7 +267,7 @@ impl Emulator {
                 let most_significant_bit = (self.v_reg[x] >> 7) & 1;
                 self.v_reg[x] <<= 1;
                 self.v_reg[0xF] = most_significant_bit;
-            }
+            },
 
             // 9XY0, Skip if VX != VY
             (9, _, _, 0) => {
@@ -276,27 +276,27 @@ impl Emulator {
                 if self.v_reg[x] != self.v_reg[y] {
                     self.pc += 2;
                 }
-            }
+            },
 
             // ANNN, Set I register to NNN
             (0xA, _, _, _) => {
                 let nnn = op & 0x0FFF;
                 self.i_reg = nnn;
-            }
+            },
 
             //BNNN, Jump to V0 + NNN This operation moves the PC to the sum of the value stored in V0 and raw value NNN
             (0xB, _, _, _) => {
                 let nnn = op & 0x0FFF;
                 self.pc = (self.v_reg[0] as u16) + nnn;
-            }
+            },
 
             //CXNN, Set the VX to a random number with a mask of NN
             (0xC, _, _, _) => {
                 let x = digit2 as usize;
                 let nn = (op & 0x00FF) as u8;
-                let rng: u8 = random();
+                let rng: u8 = rand::thread_rng().gen();
                 self.v_reg[x] = rng & nn;
-            }
+            },
 
             //DXYN, Draw Sprite on location X and Y co-ordinate. With the height of pixel N.
             // Width of the pixel in Chip8 is constant i.e 8px N can be 1 to 16 so sprite can be that much tall
@@ -321,7 +321,7 @@ impl Emulator {
                         if (pixels & (0b1000_0000 >> x_line)) != 0 {
                             // Sprites should wrap around screen, so apply modulo
                             let x = (x_coord + x_line) as usize % SCREEN_WIDTH;
-                            let y = (y_coord + y_line) as usize & SCREEN_HEIGHT;
+                            let y = (y_coord + y_line) as usize % SCREEN_HEIGHT;
 
                             // Get our pixel's index for our 1D screen array
                             let idx = x + SCREEN_WIDTH * y;
@@ -339,7 +339,7 @@ impl Emulator {
                 } else {
                     self.v_reg[0xF] = 0;
                 }
-            }
+            },
 
             // EX9E, Skip if Key Pressed
             (0xE, _, 9, 0xE) => {
@@ -349,7 +349,7 @@ impl Emulator {
                 if key {
                     self.pc += 2;
                 }
-            }
+            },
 
             // EXA1, Skip if key not pressed
             (0xE, _, 0xA, 1) => {
@@ -359,7 +359,7 @@ impl Emulator {
                 if !key {
                     self.pc += 2;
                 }
-            }
+            },
 
             // FX07, Delay timer ticks down every frame untill reaching zero. However, that operation happens automatically
             // It would be useful to be able to actually see what's in Delay Timer for our game's timing purposes
@@ -367,7 +367,7 @@ impl Emulator {
             (0xF, _, 0, 7) => {
                 let x = digit2 as usize;
                 self.v_reg[x] = self.delay_timer;
-            }
+            },
 
             // FX0A, Wait for key press
             // Why are we resetting the opcode and going through the entire fetch sequence again, rather than simply doing this in a loop.
@@ -389,19 +389,19 @@ impl Emulator {
                     // Redo opcode
                     self.pc -= 2;
                 }
-            }
+            },
 
             // FX15, A way to reset the Delay Timer to a value, this instruction allows us to copy over a value from a V register to our choosing
             (0xF, _, 1, 5) => {
                 let x = digit2 as usize;
                 self.delay_timer = self.v_reg[x];
-            }
+            },
 
             // FX18, Same as above instruction but this time we are going to store the value from VX into our Sound Timer
             (0xF, _, 1, 8) => {
                 let x = digit2 as usize;
                 self.sound_timer = self.v_reg[x];
-            }
+            },
 
             // FX1E, Increment the value in I register with the value of VX register i.e VI = VI + VX
             // Although if overflowed, roll over back to 0
@@ -409,7 +409,7 @@ impl Emulator {
                 let x = digit2 as usize;
                 let vx = self.v_reg[x] as u16;
                 self.i_reg = self.i_reg.wrapping_add(vx);
-            }
+            },
 
             // FX29, Set I to Font Address
             // We stored an array of font data at the very beginning of RAM when initializing the emulator.
@@ -429,7 +429,7 @@ impl Emulator {
                 let x = digit2 as usize;
                 let c = self.v_reg[x] as u16;
                 self.i_reg = c * 5;
-            }
+            },
 
             // FX33, Set I register to BCD of VX
             // TODO: Please use better algorithm for getting BCD value 
@@ -443,7 +443,7 @@ impl Emulator {
                 self.ram[self.i_reg as usize] = hundreds;
                 self.ram[(self.i_reg + 1) as usize] = tens;
                 self.ram[(self.i_reg + 2) as usize] = ones;
-            }
+            },
 
             // FX55, Store the values of registers V0 to VX(Inclusive) with the same range of values from RAM beginning with address store in I register
             (0xF, _, 5, 5) => {
@@ -453,7 +453,7 @@ impl Emulator {
                 for idx in 0..=x {
                     self.ram[i + idx] = self.v_reg[idx];
                 }
-            }
+            },
 
             // FX65, Load the values into V0 to VX(Inclusive) from the same range of values from RAm beginning with address stored in I register
             (0xF, _, 6, 5) => {
@@ -463,7 +463,7 @@ impl Emulator {
                 for idx in 0..=x {
                     self.v_reg[idx] = self.ram[i + idx];
                 }
-            }
+            },
 
             (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op),
         }
